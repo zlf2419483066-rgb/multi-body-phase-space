@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install both demos
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./four-body
+          python -m pip install -e ./five-body
+      - name: Test four-body demo
+        run: python -m unittest discover -s four-body/tests -p 'test_*.py' -v
+      - name: Test five-body demo
+        run: python -m unittest discover -s five-body/tests -p 'test_*.py' -v
+

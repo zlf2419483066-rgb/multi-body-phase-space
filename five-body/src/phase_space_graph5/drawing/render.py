@@ -1,0 +1,370 @@
+"""GD-04: Matplotlib SVG/PNG renderer; no AI image generation.
+
+Graphviz emits cubic B-spline control points in its JSON edge positions.  The
+renderer keeps those controls as curves, trims fallback paths to the same
+node-boundary convention, and applies double-line offsets along local normals
+so parallel blue strokes stay readable on curved edges.
+
+Rendering is deliberately downstream of the candidate and drawing contracts.
+It never searches candidates or evaluates invariant independence.  Matplotlib
+is an explicit optional dependency; a missing installation is reported rather
+than silently replaced by a second renderer with different geometry.
+"""
+from __future__ import annotations
+
+from io import BytesIO
+from typing import Literal
+
+from .geometry import DrawingScene, NODE_RADIUS
+
+BLUE = "#1769aa"
+INK = "#202a34"
+NODE_EDGE = "#1769aa"
+
+
+def render_drawing(
+    scene: DrawingScene,
+    *,
+    fmt: Literal["svg", "png"] = "svg",
+    dpi: int = 160,
+    show_internal_labels: bool = True,
+    show_external_labels: bool = True,
+    show_annotations: bool = True,
+) -> bytes:
+    """Render a scene while preserving its edge references and semantics.
+
+    The label switches and annotations are display-only.  They do not mutate
+    ``DrawingScene`` and default to the complete marked view used by callers.
+    The status and dashed-line note are derived from scene metadata and are
+    explanatory display text, never a new candidate classification.
+    """
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from matplotlib.figure import Figure
+        from matplotlib.patches import Circle, FancyArrowPatch, PathPatch
+        from matplotlib.path import Path
+    except ImportError as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError("dependency_error: Matplotlib is required") from exc
+
+    fig = Figure(figsize=(8, 4), dpi=dpi)
+    FigureCanvasAgg(fig)
+    ax = fig.add_axes((0.04, 0.04, 0.92, 0.86))
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    # Draw strokes first so white vertex faces cleanly mask any antialiasing
+    # at the Graphviz node boundary.
+    for stroke in scene.strokes:
+        color = BLUE if stroke.edge_type == "double" else INK
+        if stroke.edge_type == "double":
+            for offset in (-2.1, 2.1):
+                _draw_line(ax, stroke.points, offset, stroke.dashed, color, Path, PathPatch)
+        else:
+            _draw_line(ax, stroke.points, 0.0, stroke.dashed, color, Path, PathPatch)
+        if stroke.arrow:
+            _draw_midpoint_arrow(ax, stroke.points, color, FancyArrowPatch)
+
+    node_radius = float(scene.metadata.get("node_radius", NODE_RADIUS))
+    for name, (x, y) in scene.nodes.items():
+        if not name.startswith("v"):
+            continue
+        ax.add_patch(
+            Circle(
+                (x, y),
+                node_radius,
+                facecolor="white",
+                edgecolor=NODE_EDGE,
+                linewidth=1.45,
+                zorder=4,
+            )
+        )
+        # The vertex name is a local physical vertex number, not a particle
+        # label, so it remains present in topology-only drawings.
+        ax.text(x, y, name[1:], fontsize=10, color=INK, ha="center", va="center", zorder=5)
+
+    strokes = {stroke.ref: stroke for stroke in scene.strokes}
+    for text, _position, ref in scene.labels:
+        if ref.kind == "internal" and not show_internal_labels:
+            continue
+        if ref.kind == "external" and not show_external_labels:
+            continue
+        stroke = strokes[ref]
+        x, y = _label_position(stroke)
+        ax.text(x, y, _math_label(text), fontsize=9, color=INK, ha="center", va="center", zorder=6)
+
+    # ``P`` describes the incoming parent momentum and is deliberately a
+    # render annotation rather than a semantic EdgeRef label.
+    if show_annotations:
+        initial = next((stroke for stroke in scene.strokes if stroke.ref.kind == "initial"), None)
+        if initial is not None:
+            x, y = _annotation_position(initial.points)
+            ax.text(x, y, "P", fontsize=11, color=INK, ha="center", va="center", zorder=6)
+
+    _draw_status(fig, scene)
+
+    points = list(scene.nodes.values())
+    for stroke in scene.strokes:
+        points.extend(stroke.points)
+    if points:
+        xs = [point[0] for point in points]
+        ys = [point[1] for point in points]
+        ax.set_xlim(min(xs) - 30, max(xs) + 30)
+        ax.set_ylim(min(ys) - 30, max(ys) + 30)
+
+    out = BytesIO()
+    fig.savefig(out, format=fmt, dpi=dpi, bbox_inches="tight", pad_inches=0.12)
+    return out.getvalue()
+
+
+def _status_text(scene: DrawingScene) -> str:
+    stage = str(scene.metadata.get("evidence_stage", "structure_only"))
+    if stage == "structure_only":
+        return "S: structure candidate"
+    if stage == "momentum_candidate":
+        return "P: momentum candidate; invariant independence not evaluated"
+    return f"candidate stage: {stage}"
+
+
+def _draw_status(fig, scene: DrawingScene) -> None:
+    """Add evidence status and the dashed-line convention to the figure."""
+    fig.text(0.045, 0.985, _status_text(scene), fontsize=9, color=INK, ha="left", va="top")
+    if any(stroke.dashed for stroke in scene.strokes):
+        fig.text(0.045, 0.955, "dashed: internally cancelled occurrence", fontsize=8, color=INK, ha="left", va="top")
+
+
+def _math_label(text: str) -> str:
+    """Wrap only labels generated by the record layer in MathText syntax."""
+    if text.startswith("p_{") and text.endswith("}"):
+        body = text[3:-1]
+        if body.isdigit() and body:
+            return f"$p_{{{body}}}$"
+    if text.startswith("q_{") and text.endswith("}"):
+        body = text[3:-1]
+        if body.isdigit() and body:
+            return f"$q_{{{body}}}$"
+    raise ValueError(f"unsupported drawing label: {text!r}")
+
+
+def _unit(dx: float, dy: float) -> tuple[float, float]:
+    length = (dx * dx + dy * dy) ** 0.5 or 1.0
+    return dx / length, dy / length
+
+
+def _control_segments(points):
+    """Return cubic segments and an optional terminal line endpoint.
+
+    A Graphviz ``b`` operation stores ``p0, c1, c2, p1, ...``.  The parser
+    appends the explicit ``e,x,y`` endpoint, so paths with that endpoint have
+    ``3*n + 2`` points; paths without it have ``3*n + 1``.  This distinction
+    lets us support multi-segment splines without treating controls as a
+    polyline.
+    """
+    points = tuple(points)
+    if len(points) < 2:
+        raise ValueError("drawing path needs at least two points")
+    if len(points) == 2:
+        return (), None
+    if len(points) == 3:
+        p0, control, p2 = points
+        c1 = (
+            p0[0] + 2.0 * (control[0] - p0[0]) / 3.0,
+            p0[1] + 2.0 * (control[1] - p0[1]) / 3.0,
+        )
+        c2 = (
+            p2[0] + 2.0 * (control[0] - p2[0]) / 3.0,
+            p2[1] + 2.0 * (control[1] - p2[1]) / 3.0,
+        )
+        return ((p0, c1, c2, p2),), None
+    terminal = points[-1] if len(points) >= 5 and len(points) % 3 == 2 else None
+    controls = points[:-1] if terminal is not None else points
+    if (len(controls) - 1) % 3:
+        raise ValueError(f"unsupported Graphviz spline point count: {len(points)}")
+    segments = tuple(
+        (controls[index], controls[index + 1], controls[index + 2], controls[index + 3])
+        for index in range(0, len(controls) - 1, 3)
+    )
+    return segments, terminal
+
+
+def _cubic_eval(segment, fraction: float):
+    p0, p1, p2, p3 = segment
+    t = fraction
+    u = 1.0 - t
+    point = (
+        u**3 * p0[0] + 3 * u**2 * t * p1[0] + 3 * u * t**2 * p2[0] + t**3 * p3[0],
+        u**3 * p0[1] + 3 * u**2 * t * p1[1] + 3 * u * t**2 * p2[1] + t**3 * p3[1],
+    )
+    tangent = (
+        3 * u**2 * (p1[0] - p0[0]) + 6 * u * t * (p2[0] - p1[0]) + 3 * t**2 * (p3[0] - p2[0]),
+        3 * u**2 * (p1[1] - p0[1]) + 6 * u * t * (p2[1] - p1[1]) + 3 * t**2 * (p3[1] - p2[1]),
+    )
+    return point, tangent
+
+
+def _sample_path(points, samples_per_segment: int = 24):
+    """Sample the actual spline geometry for normals and arclength labels."""
+    segments, terminal = _control_segments(points)
+    if not segments:
+        start, end = tuple(points)
+        return tuple(
+            (start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1]))
+            for t in (index / samples_per_segment for index in range(samples_per_segment + 1))
+        )
+    samples = []
+    for segment in segments:
+        for index in range(samples_per_segment + 1):
+            if samples and index == 0:
+                continue
+            samples.append(_cubic_eval(segment, index / samples_per_segment)[0])
+    if terminal is not None:
+        start = samples[-1]
+        for index in range(1, samples_per_segment + 1):
+            fraction = index / samples_per_segment
+            samples.append((start[0] + fraction * (terminal[0] - start[0]), start[1] + fraction * (terminal[1] - start[1])))
+    return tuple(samples)
+
+
+def _local_offset_points(points, offset: float, samples_per_segment: int = 24):
+    """Offset sampled curve points by their local normals."""
+    samples = _sample_path(points, samples_per_segment)
+    if not offset:
+        return samples
+    result = []
+    for index, point in enumerate(samples):
+        if index == 0:
+            dx, dy = samples[1][0] - point[0], samples[1][1] - point[1]
+        elif index == len(samples) - 1:
+            dx, dy = point[0] - samples[index - 1][0], point[1] - samples[index - 1][1]
+        else:
+            dx = samples[index + 1][0] - samples[index - 1][0]
+            dy = samples[index + 1][1] - samples[index - 1][1]
+        ux, uy = _unit(dx, dy)
+        result.append((point[0] - offset * uy, point[1] + offset * ux))
+    return tuple(result)
+
+
+def _catmull_path(points, path_type):
+    """Fit a smooth cubic path through sampled points."""
+    points = tuple(points)
+    if len(points) < 2:
+        raise ValueError("drawing path needs at least two points")
+    if len(points) == 2:
+        return path_type(points, (path_type.MOVETO, path_type.LINETO))
+    vertices = [points[0]]
+    codes = [path_type.MOVETO]
+    for index in range(len(points) - 1):
+        before = points[max(0, index - 1)]
+        start = points[index]
+        end = points[index + 1]
+        after = points[min(len(points) - 1, index + 2)]
+        c1 = (start[0] + (end[0] - before[0]) / 6.0, start[1] + (end[1] - before[1]) / 6.0)
+        c2 = (end[0] - (after[0] - start[0]) / 6.0, end[1] - (after[1] - start[1]) / 6.0)
+        vertices.extend((c1, c2, end))
+        codes.extend((path_type.CURVE4, path_type.CURVE4, path_type.CURVE4))
+    return path_type(vertices, codes)
+
+
+def _curve_path(points, path_type, offset: float = 0.0):
+    if offset:
+        return _catmull_path(_local_offset_points(points, offset), path_type)
+    segments, terminal = _control_segments(points)
+    if not segments:
+        return path_type(points, (path_type.MOVETO, path_type.LINETO))
+    vertices = [segments[0][0]]
+    codes = [path_type.MOVETO]
+    for segment in segments:
+        vertices.extend(segment[1:])
+        codes.extend((path_type.CURVE4, path_type.CURVE4, path_type.CURVE4))
+    if terminal is not None:
+        vertices.append(terminal)
+        codes.append(path_type.LINETO)
+    return path_type(vertices, codes)
+
+
+def _draw_line(ax, points, offset, dashed, color, path_type, patch_type):
+    path = _curve_path(points, path_type, offset)
+    ax.add_patch(
+        patch_type(
+            path,
+            fill=False,
+            color=color,
+            linewidth=1.55 if color == BLUE else 1.25,
+            linestyle="--" if dashed else "-",
+            zorder=2,
+        )
+    )
+
+
+def _point_and_tangent(points, fraction: float = 0.5) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Find a point by arclength and its local tangent on the full spline."""
+    samples = _sample_path(points, 32)
+    lengths = [0.0]
+    for before, after in zip(samples, samples[1:]):
+        lengths.append(lengths[-1] + ((after[0] - before[0]) ** 2 + (after[1] - before[1]) ** 2) ** 0.5)
+    target = max(0.0, min(1.0, fraction)) * lengths[-1]
+    for index in range(1, len(samples)):
+        if lengths[index] < target:
+            continue
+        span = lengths[index] - lengths[index - 1] or 1.0
+        local = (target - lengths[index - 1]) / span
+        before, after = samples[index - 1], samples[index]
+        point = (before[0] + local * (after[0] - before[0]), before[1] + local * (after[1] - before[1]))
+        tangent = (after[0] - before[0], after[1] - before[1])
+        return point, tangent
+    return samples[-1], (samples[-1][0] - samples[-2][0], samples[-1][1] - samples[-2][1])
+
+
+# Keep the old private helper name for callers/tests while making its behavior
+# cover every spline segment and use arclength rather than control-point index.
+_cubic_point_and_tangent = _point_and_tangent
+
+
+def _draw_midpoint_arrow(ax, points, color, arrow_type):
+    point, tangent = _cubic_point_and_tangent(points, 0.52)
+    ux, uy = _unit(*tangent)
+    half_length = 5.5
+    start = (point[0] - half_length * ux, point[1] - half_length * uy)
+    end = (point[0] + half_length * ux, point[1] + half_length * uy)
+    ax.add_patch(
+        arrow_type(
+            start,
+            end,
+            arrowstyle="-|>",
+            mutation_scale=8,
+            linewidth=0.85,
+            color=color,
+            zorder=3,
+        )
+    )
+
+
+def _label_position(stroke) -> tuple[float, float]:
+    """Place labels on a readable normal, past the endpoint for externals."""
+    points = tuple(stroke.points)
+    if stroke.ref.kind == "external":
+        point = points[-1]
+        tangent = (point[0] - points[-2][0], point[1] - points[-2][1])
+        ux, uy = _unit(*tangent)
+        return point[0] + 13.0 * ux, point[1] + 13.0 * uy
+    point, tangent = _cubic_point_and_tangent(points, 0.5)
+    ux, uy = _unit(*tangent)
+    nx, ny = -uy, ux
+    if ny < 0 or (ny == 0 and nx < 0):
+        nx, ny = -nx, -ny
+    offset = 12.0 if stroke.edge_type == "double" else 10.0
+    return point[0] + offset * nx, point[1] + offset * ny
+
+
+def _annotation_position(points) -> tuple[float, float]:
+    point, tangent = _cubic_point_and_tangent(points, 0.35)
+    ux, uy = _unit(*tangent)
+    nx, ny = -uy, ux
+    if ny < 0:
+        nx, ny = -nx, -ny
+    return point[0] + 13.0 * nx, point[1] + 13.0 * ny
+
+
+__all__ = ["render_drawing"]
