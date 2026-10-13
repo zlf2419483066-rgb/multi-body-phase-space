@@ -2,3 +2,5 @@
 * text=auto
 four-body/文档/** -text -diff
 five-body/文档/** -text -diff
+results/four-body/** -text
+results/four-body/assets/**/*.svg -diff

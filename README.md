@@ -1,5 +1,13 @@
 # Multi-body phase-space graphic method
 
+## 四体研究成果：直接看图与公式
+
+**[成果总览](results/four-body/README.md) · [图与标记分支目录](results/four-body/01_图清单.md) · [公式目录](results/four-body/02_公式清单.md)**
+
+已上传四体的 **54 个母拓扑、143 个标记公式类、72 页分支对照图**，共 538 个 PNG/SVG 图文件。各拓扑与对应公式互相链接，无需运行程序即可查看。此次成果上传用于项目维护与展示；完整程序的最终交付另行整理。公式的适用域、局部数值证据和待人工审阅状态见成果目录。
+
+The [four-body results gallery](results/four-body/) contains the existing diagrams, marked branches and formula dossiers for direct browsing. The software below supports generation and reproducibility.
+
 This repository contains two small, installable Python demos for enumerating and auditing graph representations of multi-body phase space in particle-physics calculations.
 
 The demos are deliberately separate:

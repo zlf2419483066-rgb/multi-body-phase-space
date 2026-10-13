@@ -2,6 +2,8 @@
 
 ## Unreleased — 2026-10-13
 
+- Published the existing four-body results gallery: 54 topology pages, 143 formula pages, 72 comparison sheets, and 538 PNG/SVG assets, with direct navigation from the repository homepage.
+
 - Fixed six formula-export f-string expressions that could not be parsed by Python 3.10/3.11. Added an early syntax check to CI and disabled matrix fail-fast so both supported Python versions finish independently.
 - Protected POSIX worker cleanup from signalling the caller's process group. Added real isolated-process regression coverage and an early cleanup check before the full CI suites.
 
