@@ -611,7 +611,7 @@ def _render_low_loop_step_three(chart: Mapping[str, Any]) -> list[str]:
         "## 3. 以子系统角定义的低圈坐标与精确线性换元",
         "",
         f"- chart profile/status：`{chart['profile']}` / `{chart.get('status', 'unknown')}`。",
-        f"- 原图变量：{_inline_math(r'\mathbf S=(' + r',\;'.join(_math_identifier(value) for value in target_variables) + r')^{\mathsf T}')}。",
+        "- 原图变量：" + _inline_math(r'\mathbf S=(' + r',\;'.join(_math_identifier(value) for value in target_variables) + r')^{\mathsf T}') + "。",
         f"- 保留内部角：{_inline_math(_variable_list_latex(chart['internal_variables']))}；总转动角：{_inline_math(_variable_list_latex(chart.get('euler_variables', [])))}。",
         "",
         "### 子系统质量与补足坐标",
@@ -625,15 +625,15 @@ def _render_low_loop_step_three(chart: Mapping[str, Any]) -> list[str]:
         "",
         "### 原图 IKV 到 $(h,t,U)$ 的可逆仿射换元",
         "",
-        f"- 补足变量次序：{_inline_math(r'\mathbf B=(' + r',\;'.join(_math_identifier(value) for value in b_variables) + r')^{\mathsf T}')}。",
+        "- 补足变量次序：" + _inline_math(r'\mathbf B=(' + r',\;'.join(_math_identifier(value) for value in b_variables) + r')^{\mathsf T}') + "。",
         _display_latex(r"\mathbf B=K\mathbf S+\mathbf b_B"),
         _display_latex(chart["K_latex"]),
         f"- $\\det K={chart['det_K']}$；固定质量的仿射偏移逐行保存在机器证据 JSON。",
         "",
         "### 五个完整不变量与回到基底变量的映射",
         "",
-        f"- { _inline_math(r'\mathbf Z=(' + r',\;'.join(_math_identifier(value) for value in chart['Z_variables']) + r')^{\mathsf T}') }。",
-        f"- 基底变量：{_inline_math(r'\mathbf X=(' + r',\;'.join(_math_identifier(value) for value in chart['basis_variables']) + r')^{\mathsf T}')}。",
+        "- " + _inline_math(r'\mathbf Z=(' + r',\;'.join(_math_identifier(value) for value in chart['Z_variables']) + r')^{\mathsf T}') + "。",
+        "- 基底变量：" + _inline_math(r'\mathbf X=(' + r',\;'.join(_math_identifier(value) for value in chart['basis_variables']) + r')^{\mathsf T}') + "。",
         _display_latex(r"\mathbf Z=A_Z\mathbf X+\mathbf b_Z,\qquad{}\mathbf X=A_Z^{-1}(\mathbf Z-\mathbf b_Z)"),
         _display_latex(chart["A_Z_latex"]),
         _display_latex(chart["inverse_A_Z_latex"]),
@@ -713,7 +713,7 @@ def _render_low_loop_step_four(chart: Mapping[str, Any]) -> list[str]:
         "",
         *([_display_latex(chart["C_E_latex"])] if equations else []),
         f"- 消元列：{_inline_math(_variable_list_latex(chart['solved_columns']))}；保留内部坐标：{_inline_math(_variable_list_latex(chart['internal_variables']))}。",
-        f"- 基底行列式：{_inline_math(r'\det(C_E)_{\rm base}=' + _fraction_latex(Fraction(str(chart.get('det_C_E_base', '1')))))}。",
+        "- 基底行列式：" + _inline_math(r'\det(C_E)_{\rm base}=' + _fraction_latex(Fraction(str(chart.get('det_C_E_base', '1'))))) + "。",
         f"- 尺度化行列式：{_inline_math(_det_c_e_latex(chart))}。",
         "- 选列先依据精确结构有理矩阵；实际约束 determinant 在该结构 determinant 上乘已列出的 $j_{x1},j_{y1}$ 次幂。",
         "",
@@ -725,9 +725,10 @@ def _render_low_loop_step_four(chart: Mapping[str, Any]) -> list[str]:
     else:
         retained_labels = tuple(shape_names[column] for column in retained_shape_columns)
         u_labels = tuple(_math_identifier(row["U_label"]) for row in equations)
+        u0_entries = r',\;'.join(rf'u_{{0,{i}}}' for i in range(1, len(equations) + 1))
         lines.extend([
             _display_latex(r"\mathbf r=\mathbf U-\mathbf u_0-C_R\mathbf z_R,\qquad{}C_E\mathbf z_E=\mathbf r"),
-            f"- $\\mathbf U={_variable_list_latex(u_labels)}^{{\\mathsf T}}$；$\\mathbf u_0=({',\\;'.join(rf'u_{{0,{i}}}' for i in range(1, len(equations) + 1))})^{{\\mathsf T}}$。",
+            f"- $\\mathbf U={_variable_list_latex(u_labels)}^{{\\mathsf T}}$；$\\mathbf u_0=({u0_entries})^{{\\mathsf T}}$。",
             f"- 保留的 $z_R={_variable_list_latex(retained_labels)}$；对应的 $C_R$ 系数矩阵：",
             _display_latex(_constraint_matrix_from_columns(chart, retained_shape_columns)),
         ])
