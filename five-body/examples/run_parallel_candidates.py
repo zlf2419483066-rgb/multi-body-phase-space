@@ -314,7 +314,11 @@ def _terminate_tree(process: subprocess.Popen[bytes]) -> dict[str, Any]:
             evidence["taskkill_error"] = f"{type(exc).__name__}:{exc}"
     else:
         try:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            worker_group = os.getpgid(process.pid)
+            if worker_group != os.getpgrp():
+                os.killpg(worker_group, signal.SIGKILL)
+            else:
+                evidence["taskkill_error"] = "shared_process_group"
         except (OSError, ProcessLookupError):
             evidence["taskkill_error"] = "killpg_failed"
     try:

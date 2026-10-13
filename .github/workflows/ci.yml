@@ -7,6 +7,7 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +26,8 @@ jobs:
           python -m pip install -e './four-body[drawing]'
           python -m pip install -e './five-body[independence,drawing]'
           python -m pip install ipywidgets ipython
+      - name: Check process cleanup isolation
+        run: python -m unittest discover -s five-body/tests -p 'test_process_cleanup5.py' -v
       - name: Test four-body demo
         run: python -m unittest discover -s four-body/tests -p 'test_*.py' -v
       - name: Test five-body demo

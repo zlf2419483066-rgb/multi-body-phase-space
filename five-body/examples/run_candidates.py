@@ -149,7 +149,9 @@ def _terminate_worker(process: subprocess.Popen[bytes]) -> None:
             pass
     else:
         try:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            worker_group = os.getpgid(process.pid)
+            if worker_group != os.getpgrp():
+                os.killpg(worker_group, signal.SIGKILL)
         except (OSError, ProcessLookupError):
             pass
     try:

@@ -8,6 +8,8 @@ The expressions now use ordinary string concatenation or precomputed LaTeX. A re
 
 ## Initial local checks
 
+The follow-up Windows Python 3.10.11 five-body run completed 254 tests with zero failures and two optional process-observation skips. The first remote follow-up passed four-body tests on both Python versions, but then stalled during five-body tests. Inspection found that the POSIX CLI cleanup used `killpg` on a child that could share the caller's group. Cleanup now avoids signalling that shared group and falls back to killing the child. New tests cover both shared and isolated groups; a real POSIX subprocess harness runs in its own session so regressions cannot terminate the test runner. CI runs that check before the full suites and has a 30-minute job limit.
+
 Validation was run against the curated public checkout on Windows with Python 3.13.13. Optional checks used SymPy 1.14.0, Matplotlib 3.11.2, ipywidgets 8.1.9 and IPython 9.17.1. CI separately targets Python 3.10 and 3.12 on Linux; its result must be checked after publication.
 
 - The initial four-body discovery ran 371 tests. Six errors were missing optional widget dependencies; one was a missing source-audit specification. After installing widgets and shipping the specification, the affected suites passed: browser adapter 5, review regressions 17, Notebook 9 and source-table audit 7 tests. The initial missing-module entry is not counted as successful verification.
