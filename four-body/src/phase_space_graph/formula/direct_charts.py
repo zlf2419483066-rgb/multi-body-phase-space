@@ -1,11 +1,4 @@
-"""Finite direct IKV charts.
-
-The first production chart is the non-degenerate two-pair chart
-``(s12, s34)`` (and relabelled pair partitions).  It is a genuine direct
-parameterisation: it reconstructs four-vectors from the requested invariants
-and computes its own density.  Other variable families are reported as
-unsupported until their analytic inverse is added.
-"""
+"""Finite direct IKV charts for the pair and d=5 Gram profiles."""
 
 from __future__ import annotations
 
@@ -17,6 +10,12 @@ from ..formula_inputs import FormulaInputCard
 from .inputs import validate_formula_card
 from .kinematic_domain import kallen, kallen_root, validate_masses, validate_pair_domain
 from .records import BranchRecord, CoordinateMap, DirectFormula, FormulaOptions
+from .d5_direct import (
+    D5_ANGLE_VARIABLES,
+    build_d5_chart_data,
+    build_d5_formula,
+    reconstruct_d5_momenta,
+)
 
 Vector4 = tuple[float, float, float, float]
 
@@ -73,6 +72,27 @@ def select_direct_chart(card: FormulaInputCard, *, options: FormulaOptions | Non
             "FormulaOptions.normalization disagrees with the FormulaInputCard measure convention"
         )
     variables = tuple(card.variable_labels)
+    if card.loop_count == 3 and len(card.independent_variables) == 5:
+        data = build_d5_chart_data(card)
+        cmap = CoordinateMap(
+            source=tuple(data["basis_variables"]),
+            target=variables,
+            forward=tuple(data["forward_equations"]),
+            inverse=tuple(data["inverse_equations"]),
+            jacobian=(
+                f"d^5S=abs(det(L))d^5X={data['abs_det_L']}d^5X; "
+                f"d^5X=abs(det(L))^(-1)d^5S"
+            ),
+        )
+        return DirectChart(
+            "direct_gram_d5",
+            variables,
+            D5_ANGLE_VARIABLES,
+            tuple(data["domain"]),
+            "built",
+            cmap,
+            diagnostics=("built direct d=5 chart; independent formula verification is pending",),
+        )
     pair = _pairs(card.independent_variables)
     angles = ANGLE_VARIABLES
     if pair is None:
@@ -144,10 +164,19 @@ def reconstruct_direct_momenta(
     values: Mapping[str, float] | Sequence[float],
     masses: Sequence[float],
     total_mass: float,
+    branch: int = 1,
 ) -> tuple[Vector4, ...]:
-    """Return p1..p4 in the parent rest frame for the pair chart."""
+    """Return p1..p4 in the parent rest frame; d=5 accepts branch=+1/-1."""
 
-    if chart.status != "built" or chart.profile != "direct_pair_recursive":
+    if chart.status != "built":
+        raise ValueError("the selected direct chart is unsupported")
+    if chart.profile == "direct_gram_d5":
+        if tuple(chart.angle_variables) != D5_ANGLE_VARIABLES:
+            raise ValueError("the selected d=5 direct chart has inconsistent Euler coordinates")
+        return reconstruct_d5_momenta(
+            chart.target_variables, values, masses, total_mass, branch=branch
+        )
+    if chart.profile != "direct_pair_recursive":
         raise ValueError("the selected direct chart is unsupported")
     data = _read_values(chart, values)
     masses, total_mass = validate_masses(masses, total_mass)
@@ -254,6 +283,12 @@ def build_direct_formula(card: FormulaInputCard, chart: DirectChart, *, options:
         raise ValueError(
             "FormulaOptions.normalization disagrees with the FormulaInputCard measure convention"
         )
+    if chart.profile == "direct_gram_d5":
+        if chart.status != "built" or tuple(chart.target_variables) != tuple(card.variable_labels):
+            raise ValueError("direct d=5 chart is not bound to the supplied FormulaInputCard")
+        if tuple(chart.angle_variables) != D5_ANGLE_VARIABLES:
+            raise ValueError("direct d=5 chart has inconsistent Euler coordinates")
+        return build_d5_formula(card, options=options)
     expected_pair = _pairs(card.independent_variables)
     expected_names = tuple("s" + "".join(map(str, group)) for group in expected_pair) if expected_pair else ()
     if chart.status == "built":
@@ -315,7 +350,9 @@ def build_direct_formula(card: FormulaInputCard, chart: DirectChart, *, options:
         differential_measure=DIFFERENTIAL_MEASURE,
         angle_definitions=ANGLE_DEFINITIONS,
         numeric_density=lambda values, masses, total_mass: _density(_read_values(chart, values), masses, total_mass, options.normalization, pair_names),
-        numeric_momenta=lambda values, masses, total_mass: reconstruct_direct_momenta(chart, values, masses, total_mass),
+        numeric_momenta=lambda values, masses, total_mass, branch=1: reconstruct_direct_momenta(
+            chart, values, masses, total_mass, branch=branch
+        ),
     )
 
 

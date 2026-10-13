@@ -403,8 +403,47 @@ def compare_paths(
     total_mass: float,
     points: Iterable[Mapping[str, float]] | None = None,
     relative_tolerance: float = 1e-9,
+    fd_relative_tolerance: float = 5e-6,
+    kinematic_tolerance: float = 1e-9,
 ) -> BenchmarkReport:
     """Compare matching physical points, never raw densities in unlike charts."""
+
+    if getattr(direct, "profile", None) == "direct_gram_d5":
+        # Lazy import keeps the dedicated benchmark isolated from this legacy
+        # pair-chart implementation and avoids a module import cycle.
+        from .d5_benchmark import compare_d5_paths
+
+        return compare_d5_paths(
+            direct,
+            bridge,
+            masses=masses,
+            total_mass=total_mass,
+            points=points,
+            relative_tolerance=relative_tolerance,
+            fd_relative_tolerance=fd_relative_tolerance,
+            kinematic_tolerance=kinematic_tolerance,
+        )
+
+    if getattr(direct, "profile", None) == "direct_gram_low_loop":
+        # Build the exact chart from the direct formula's declared target
+        # variable order. Both imports stay lazy so legacy pair/D5 callers do
+        # not load the low-loop numerical implementation.
+        from .low_loop_benchmark import compare_low_loop_paths
+        from .low_loop_direct import build_low_loop_chart_data_from_labels
+
+        labels = tuple(getattr(direct, "target_variables", ()))
+        chart_data = build_low_loop_chart_data_from_labels(labels)
+        return compare_low_loop_paths(
+            direct,
+            bridge,
+            chart_data=chart_data,
+            masses=masses,
+            total_mass=total_mass,
+            points=points,
+            relative_tolerance=relative_tolerance,
+            fd_relative_tolerance=fd_relative_tolerance,
+            kinematic_tolerance=kinematic_tolerance,
+        )
 
     try:
         tolerance = float(relative_tolerance)

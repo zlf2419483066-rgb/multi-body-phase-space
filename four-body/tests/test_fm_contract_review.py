@@ -9,7 +9,57 @@ from phase_space_graph import (
     build_formula_input, generate_formula, FormulaOptions, normalize_physical_labeling,
     canonicalize_physical_labeling, validate_artifact,
 )
-from phase_space_graph.formula.raw import reduce_covariant
+from phase_space_graph.formula.raw import build_f0_expression, reduce_covariant
+from phase_space_graph.formula.tree_covariant import build_tree_covariant_trace
+from phase_space_graph.formula.inputs import prepare_formula_input
+
+
+def _replay_tree_steps(trace):
+    """Check every recorded integer substitution against its equation state."""
+    elimination = trace.to_dict()["elimination"]
+    replayed = None
+    for step in elimination["steps"]:
+        before = {
+            int(row["vertex"]): {key: value for key, value in row["coefficients"].items() if value}
+            for row in step["equations_before"]
+        }
+        if replayed is not None:
+            assert replayed == before
+        leaf = int(step["leaf_vertex"])
+        equation = dict(step["current_equation_coefficients"])
+        q = str(step["integrated_q"])
+        coefficient = equation.pop(q)
+        assert coefficient in (-1, 1)
+        substitution = step["substitution_coefficients"]
+        assert q not in substitution
+        for symbol, value in substitution.items():
+            updated = equation.get(symbol, 0) + coefficient * value
+            if updated:
+                equation[symbol] = updated
+            else:
+                equation.pop(symbol, None)
+        assert not equation
+        expected = {}
+        for vertex, row in before.items():
+            if vertex == leaf:
+                continue
+            updated = dict(row)
+            q_coefficient = updated.pop(q, 0)
+            for symbol, value in substitution.items():
+                new_value = updated.get(symbol, 0) + q_coefficient * value
+                if new_value:
+                    updated[symbol] = new_value
+                else:
+                    updated.pop(symbol, None)
+            expected[vertex] = updated
+        actual = {
+            int(row["vertex"]): {key: value for key, value in row["coefficients"].items() if value}
+            for row in step["equations_after"]
+        }
+        assert actual == expected
+        replayed = actual
+    assert set(replayed) == {int(elimination["root_vertex"])}
+    assert replayed[int(elimination["root_vertex"])] == {"P": 1, "p_1": -1, "p_2": -1, "p_3": -1, "p_4": -1}
 
 
 class FormulaContractReviewTests(unittest.TestCase):
@@ -50,6 +100,8 @@ class FormulaContractReviewTests(unittest.TestCase):
         bad = dict(card.identity, digest="wrong")
         with self.assertRaises(ValueError):
             generate_formula(replace(card, identity=bad))
+        with self.assertRaises(ValueError):
+            reduce_covariant(replace(card, identity=bad))
 
     def test_b_raw_keeps_all_incoming_references(self):
         fixture = fixture_b()
@@ -63,13 +115,36 @@ class FormulaContractReviewTests(unittest.TestCase):
         self.assertIn("jing_psf", raw.expression)
         self.assertIn("CancelCopies", raw.expression)
 
-    def test_covariant_target_has_ds_and_concrete_constraints_but_no_fake_proof(self):
+    def test_covariant_tree_builds_and_replays_ds_and_concrete_constraints(self):
         result = reduce_covariant(self.card)
-        self.assertEqual(result.status, "pending")
-        self.assertIn("ds12 delta(s12-(p_1+p_2)^2)", result.expression)
-        self.assertIn("ds34 delta(s34-(p_3+p_4)^2)", result.expression)
-        self.assertNotIn("COV-tree-elimination", [step.rule_id for step in result.steps])
-        self.assertTrue(result.diagnostics)
+        self.assertEqual(result.status, "built")
+        self.assertIn("ds12", result.expression)
+        self.assertIn("ds34", result.expression)
+        self.assertIn("delta((p_1 + p_2)^2 - s12) theta((p_1 + p_2)^0)", result.expression)
+        self.assertIn("delta((p_3 + p_4)^2 - s34) theta((p_3 + p_4)^0)", result.expression)
+        self.assertEqual(len(result.remaining_constraints), 3)
+        self.assertTrue(any("s12" in item and "delta(" in item for item in result.remaining_constraints))
+        self.assertTrue(any("s34" in item and "delta(" in item for item in result.remaining_constraints))
+        self.assertIn("FM-tree-leaf-q-elimination", [step.rule_id for step in result.steps])
+        self.assertIn("FM-D0-occurrence-measure-cancellation", [step.rule_id for step in result.steps])
+        prepared = prepare_formula_input(self.card, measure_convention=self.card.measure_convention)
+        trace = build_tree_covariant_trace(prepared)
+        self.assertEqual(trace.status, "built")
+        self.assertFalse(trace.formula_verified)
+        self.assertEqual(trace.scope["loop_count"], 0)
+        self.assertEqual(trace.scope["d"], 2)
+        self.assertEqual(len(trace.elimination["steps"]), 2)
+        _replay_tree_steps(trace)
+        self.assertTrue(any("not a verified full formula" in item for item in result.diagnostics))
+
+    def test_reduce_covariant_preserves_identityless_ready_card_entry(self):
+        identityless = build_formula_input(pair_fixture(), measure_convention="standard_2pi4")
+        self.assertIsNone(identityless.identity)
+        for supplied_raw in (None, build_f0_expression(identityless)):
+            with self.subTest(supplied_raw=supplied_raw is not None):
+                result = reduce_covariant(identityless, supplied_raw)
+                self.assertEqual(result.status, "built")
+                self.assertIn("FM-tree-leaf-q-elimination", [step.rule_id for step in result.steps])
 
     def test_dependent_input_stays_blocked(self):
         fx = fixture_d()

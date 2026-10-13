@@ -12,9 +12,9 @@ This file records preparation status; it is not a submission or an acceptance cl
 - contribution and support guidance;
 - a documented separation between software tests and research evidence.
 
-The repository also keeps the expensive five-body L5 counter outside the
-default `unittest discover` pattern; it is an internal long-running check,
-not a quick installation smoke test.
+Internal high-loop production runners and their private codec/archive inputs
+are excluded from the public checkout. Public regression tests use bounded
+fixtures rather than attempting to recreate the expensive five-body L5 run.
 
 ## Still required before submission
 

@@ -1,0 +1,313 @@
+{
+  "tables": [
+    {
+      "table": 5,
+      "variables": [
+        "s12",
+        "s13",
+        "s14",
+        "s23",
+        "s124"
+      ],
+      "density_without_2pi": "Ag/(512*M**3*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 6,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 6,
+      "variables": [
+        "s12",
+        "s13",
+        "s14",
+        "s34",
+        "c_3_34"
+      ],
+      "density_without_2pi": "Ag*g34*ks_3_34/(256*M**2*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 7,
+      "variables": [
+        "s12",
+        "s13",
+        "s24",
+        "s34",
+        "c_1_12"
+      ],
+      "density_without_2pi": "Ag*g12*ks_1_12/(256*M**2*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 8,
+      "variables": [
+        "s12",
+        "s23",
+        "s24",
+        "s234",
+        "c_3_234"
+      ],
+      "density_without_2pi": "Ag*g234*ks_3_234/(256*M**2*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 9,
+      "variables": [
+        "s12",
+        "s13",
+        "s124",
+        "s134",
+        "c_4_124"
+      ],
+      "density_without_2pi": "Ag*g124*ks_4_124/(256*M**2*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 10,
+      "variables": [
+        "s12",
+        "s13",
+        "s123",
+        "s124",
+        "c_2_123"
+      ],
+      "density_without_2pi": "Ag*g123*ks_2_123/(256*M**2*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 11,
+      "variables": [
+        "s12",
+        "s34",
+        "s234",
+        "s124",
+        "c13"
+      ],
+      "density_without_2pi": "Ag/(256*M**3*k2)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 12,
+      "variables": [
+        "s12",
+        "s124",
+        "s123",
+        "s134",
+        "c13"
+      ],
+      "density_without_2pi": "Ag/(256*M**3*k2)",
+      "mass_dimension_factor_exponent": 4,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 13,
+      "variables": [
+        "s12",
+        "s13",
+        "s14",
+        "c12",
+        "c_3_134"
+      ],
+      "density_without_2pi": "Ag*g134*ks_3_134*k2/(128*M*k3*abs(E1*k2-E2*k1*c12))",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 14,
+      "variables": [
+        "s12",
+        "s13",
+        "s24",
+        "c_2_24",
+        "c_1_13"
+      ],
+      "density_without_2pi": "Ag*ks_1_13*ks_2_24*lam(M**2,s13,s24)/(512*M**3*sqrt(s13)*sqrt(s24)*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 15,
+      "variables": [
+        "s12",
+        "s13",
+        "s123",
+        "c_2_123",
+        "c_3_123"
+      ],
+      "density_without_2pi": "Ag*ks_2_123*ks_3_123*lam(M**2,s123,m4**2)/(512*M**3*s123*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 16,
+      "variables": [
+        "s12",
+        "s24",
+        "s234",
+        "c_2_24",
+        "c_3_234"
+      ],
+      "density_without_2pi": "Ag*g234*g24*ks_3_234*ks_2_24/(128*M*k1*k2*k3)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 17,
+      "variables": [
+        "s13",
+        "s24",
+        "s234",
+        "c_2_24",
+        "c12"
+      ],
+      "density_without_2pi": "Ag*ks_2_24*sqrt(lam(M**2,s13,s24))/(256*M**3*sqrt(s24)*k3)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 18,
+      "variables": [
+        "s13",
+        "s134",
+        "s234",
+        "c_4_134",
+        "c12"
+      ],
+      "density_without_2pi": "Ag*ks_4_134*sqrt(lam(M**2,m2**2,s134))/(256*M**3*sqrt(s134)*k3)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 19,
+      "variables": [
+        "s12",
+        "s123",
+        "s124",
+        "c_1_12",
+        "c13"
+      ],
+      "density_without_2pi": "Ag*g12*ks_1_12/(128*M**2*k2)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 20,
+      "variables": [
+        "s124",
+        "s134",
+        "s234",
+        "c12",
+        "c13"
+      ],
+      "density_without_2pi": "Ag*k1/(128*M**3)",
+      "mass_dimension_factor_exponent": 2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 21,
+      "variables": [
+        "s13",
+        "s24",
+        "c_1_13",
+        "c12",
+        "c13"
+      ],
+      "density_without_2pi": "Ag*g13*ks_1_13/(128*M**2*k2)",
+      "mass_dimension_factor_exponent": 0,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 22,
+      "variables": [
+        "s12",
+        "s13",
+        "c_1_12",
+        "theta34",
+        "theta4_12"
+      ],
+      "density_without_2pi": "Ag*ks_1_12*q12*k3*k4**2*sin(theta34)**2/(64*sqrt(s12)*k1*k2*D22)",
+      "mass_dimension_factor_exponent": 0,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 23,
+      "variables": [
+        "s12",
+        "s234",
+        "c_3_34",
+        "c12",
+        "c13"
+      ],
+      "density_without_2pi": "Ag*g34*ks_3_34*k2*k1/(64*M*abs(E1*k2-E2*k1*c12))",
+      "mass_dimension_factor_exponent": 0,
+      "interpretation": "IKV_row_plus_named_starred_frame",
+      "alternative_variables": [
+        "s12",
+        "s234",
+        "c_3_34",
+        "theta12",
+        "theta13"
+      ],
+      "source_measure_conflict": "caption dtheta12 dtheta13 vs IKV row cos(theta12),cos(theta13); both evaluated without automatic acceptance"
+    },
+    {
+      "table": 24,
+      "variables": [
+        "s134",
+        "s234",
+        "c_3_34",
+        "c12",
+        "c13"
+      ],
+      "density_without_2pi": "Ag*g34*ks_3_34*k1/(64*M**2)",
+      "mass_dimension_factor_exponent": 0,
+      "interpretation": "IKV_row_plus_named_starred_frame",
+      "alternative_variables": [
+        "s134",
+        "s234",
+        "c_3_34",
+        "theta12",
+        "theta13"
+      ],
+      "source_measure_conflict": "caption dtheta12 dtheta13 vs IKV row cos(theta12),cos(theta13); both evaluated without automatic acceptance"
+    },
+    {
+      "table": 25,
+      "variables": [
+        "s12",
+        "c_1_12",
+        "c13",
+        "theta34",
+        "theta4_12"
+      ],
+      "density_without_2pi": "Ag*q12*ks_1_12*k3**2*k4**2*sin(theta34)**2/(32*sqrt(s12)*k2*D22)",
+      "mass_dimension_factor_exponent": -2,
+      "interpretation": "IKV_row_plus_named_starred_frame"
+    },
+    {
+      "table": 26,
+      "variables": [
+        "s234",
+        "c_3_34",
+        "c12",
+        "theta13",
+        "theta2_34"
+      ],
+      "density_without_2pi": "Ag*q34*ks_3_34*k1**2*k2*sin(theta12)**2/(32*M*sqrt(s34)*E2*sin(theta2_34)**2)",
+      "mass_dimension_factor_exponent": -2,
+      "interpretation": "IKV_row_plus_named_starred_frame",
+      "source_measure_conflict": "caption c1star vs IKV row c3star; audit IKV row, do not claim caption verified"
+    }
+  ],
+  "normalization": "multiply each density_without_2pi by (2*pi)^(-12) for jing_psf; standard_2pi4 multiply further (2*pi)^4",
+  "star_definition": "c_i_subset=-dot(boost_to_subset_rest(p_i).spatial, unit(Q_subset.spatial))/norm(boosted spatial). g_subset=norm(Q.spatial)/sqrt(Q^2). ks_i_subset=norm(boosted spatial). All axes taken from parent COM.",
+  "theta_definition": "thetaij=acos(COM cosine); thetai_subset=acos(dot(p_i.spatial,Q_subset.spatial)/(ki*norm(Q_subset.spatial)))",
+  "D22": "E4*(E1+E2)*sin(theta4_12)^2 + E3*(E1+E2)*sin(theta34+theta4_12)^2 + E3*E4*sin(theta34)^2",
+  "branches": "per physical sheet; both reflection mirrors; radial k2 solutions at tables13/23 require separate checks, not multiplying 2 blindly",
+  "note": "Source density rows transcribed by primary after viewing PDF; auxiliary printed definitions and energy expressions audited separately; no presumption all pass."
+}

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+from collections.abc import Mapping
 
 from .records import FormulaArtifact
 
@@ -18,6 +19,16 @@ class ValidationFinding:
 
     def to_dict(self) -> dict[str, str]:
         return {"check": self.check, "status": self.status, "message": self.message}
+
+
+def _has_nonfinite_number(value: object) -> bool:
+    if isinstance(value, float):
+        return not math.isfinite(value)
+    if isinstance(value, Mapping):
+        return any(_has_nonfinite_number(item) for item in value.values())
+    if isinstance(value, (tuple, list)):
+        return any(_has_nonfinite_number(item) for item in value)
+    return False
 
 
 def validate_artifact(artifact: FormulaArtifact) -> tuple[ValidationFinding, ...]:
@@ -43,7 +54,7 @@ def validate_artifact(artifact: FormulaArtifact) -> tuple[ValidationFinding, ...
                "benchmark": artifact.internal_benchmark}
     for name, value in objects.items():
         status = artifact.statuses.get(name)
-        if (value is None and status in {"built", "verified"}) or (
+        if (value is None and status in {"built", "verified", "verified_local"}) or (
                 value is not None and status != value.status):
             findings.append(ValidationFinding(name + "-integrity", "failed", "status disagrees with stored result"))
     if artifact.input_card is None or artifact.input_digest is None:
@@ -60,10 +71,31 @@ def validate_artifact(artifact: FormulaArtifact) -> tuple[ValidationFinding, ...
             if not value.differential_measure or not value.angle_definitions:
                 findings.append(ValidationFinding(name + "-measure", "failed", "density lacks explicit angular measure"))
     report = artifact.internal_benchmark
-    if report is not None and report.status == "verified":
+    if report is not None and report.status in {"verified", "verified_local"}:
         residuals = (report.max_absolute_residual, report.max_relative_residual, report.coordinate_residual)
+        evidence = report.evidence
+        replay_points = evidence.get("replay_points") if isinstance(evidence, Mapping) else None
+        try:
+            replay_count = len(replay_points)
+        except TypeError:
+            replay_count = -1
+        evidence_incomplete = (
+            not isinstance(evidence, Mapping)
+            or not evidence
+            or replay_count != report.points
+            or _has_nonfinite_number(evidence)
+        )
+        if isinstance(evidence, Mapping) and evidence.get("target_profile") in {
+            "direct_gram_d5", "direct_gram_low_loop",
+        }:
+            point_evidence = evidence.get("point_evidence")
+            try:
+                point_evidence_count = len(point_evidence)
+            except TypeError:
+                point_evidence_count = -1
+            evidence_incomplete = evidence_incomplete or point_evidence_count != report.points
         if (report.points <= 0 or report.compared != report.points or report.failures or
-                any(r is None or not math.isfinite(r) or r < 0 for r in residuals)):
+                any(r is None or not math.isfinite(r) or r < 0 for r in residuals) or evidence_incomplete):
             findings.append(ValidationFinding("benchmark-evidence", "failed", "empty, incomplete, or nonfinite benchmark"))
     if direct_status == "verified" and not artifact.direct_verified:
         findings.append(ValidationFinding("direct-completion", "failed", "required derivation and benchmark evidence is absent"))

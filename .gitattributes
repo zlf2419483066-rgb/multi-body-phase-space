@@ -1,0 +1,4 @@
+# Frozen evidence is hash-checked: preserve its original bytes on every OS.
+* text=auto
+four-body/文档/** -text -diff
+five-body/文档/** -text -diff

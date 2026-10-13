@@ -11,6 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 drawing = ["matplotlib>=3.8"]
+independence = ["sympy>=1.12"]
 test = ["pytest>=8"]
 
 [tool.setuptools.packages.find]

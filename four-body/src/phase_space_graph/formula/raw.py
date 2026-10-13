@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from ..formula_inputs import FormulaInputCard
 from .records import CovariantResult, RawExpression, RuleStep
-from .inputs import validate_formula_card
+from .inputs import prepare_formula_input, validate_formula_card
+from .tree_covariant import build_tree_covariant_trace
 
 
 def _require_card(card: FormulaInputCard) -> FormulaInputCard:
@@ -51,20 +52,37 @@ def build_f0_expression(card: FormulaInputCard) -> RawExpression:
 
 
 def reduce_covariant(card: FormulaInputCard, raw: RawExpression | None = None) -> CovariantResult:
-    """Show the specified target, pending the FM-04 elimination certificate.
-
-    A structural tree test does not execute measure cancellation, elimination,
-    or the normalization ledger.  Never emit a fabricated completed RuleStep.
-    """
+    """Build the scoped n=4, L=0..3 double-tree certificate; preserve pending elsewhere."""
 
     card = _require_card(card)
-    expected_raw = build_f0_expression(card)
-    if raw is not None and raw != expected_raw:
+    input_raw = build_f0_expression(card)
+    if raw is not None and raw != input_raw:
         raise ValueError("raw expression does not belong to the supplied formula card")
-    raw = expected_raw
+    if card.identity is None:
+        # Preserve the long-standing public call form for ready LM-12 cards
+        # created directly with build_formula_input.  The graph replay's D0
+        # ledger requires an identity, so use the same validated default
+        # fixed-label identity that the high-level formula entry point adds.
+        card = prepare_formula_input(card, measure_convention=card.measure_convention)
+        raw = build_f0_expression(card)
+    else:
+        raw = input_raw
     loop = card.loop_count if card.loop_count is not None else 0
     if loop < 0:
         return CovariantResult(raw.expression, (), "blocked", diagnostics=("invalid loop count",))
+    d = 2 + loop
+    if card.n == 4 and loop in (0, 1, 2, 3) and len(card.double_measures) == d:
+        trace = build_tree_covariant_trace(card)
+        return CovariantResult(
+            expression=trace.expression,
+            remaining_constraints=trace.remaining_constraints,
+            status="built",
+            steps=trace.rule_steps,
+            diagnostics=(
+                f"D0 and all d={d} double-line q integrations have a replayable graph-derived certificate.",
+                "A built tree reduction is not a verified full formula or an external source match.",
+            ) + trace.diagnostics,
+        )
     constraints = tuple(
         f"delta(s{''.join(map(str, variable))}-(" + "+".join(f"p_{i}" for i in variable) + ")^2)"
         for variable in card.independent_variables
@@ -89,4 +107,9 @@ def reduce_covariant(card: FormulaInputCard, raw: RawExpression | None = None) -
 build_raw_expression = build_f0_expression
 
 
-__all__ = ["build_f0_expression", "build_raw_expression", "reduce_covariant"]
+__all__ = [
+    "build_f0_expression",
+    "build_raw_expression",
+    "build_tree_covariant_trace",
+    "reduce_covariant",
+]

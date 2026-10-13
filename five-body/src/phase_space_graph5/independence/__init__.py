@@ -1,0 +1,86 @@
+"""Five-body exact invariant-independence foundation layer.
+
+Only stdlib exact contracts, affine coordinates, and linear algebra are
+imported here.  The optional SymPy backend is lazy inside
+``exact_algebra`` functions and is never imported at package import time.
+"""
+
+from .contracts import (
+    COORDINATE_VERSION,
+    EVIDENCE_SCHEMA_VERSION,
+    PROFILE_VERSION,
+    REGULAR_DOMAIN_CONDITIONS,
+    EvaluationRequest,
+    InvariantOccurrence,
+    LabelEvaluation,
+    PhysicsProfile,
+    RegularDomainContract,
+    ReviewedCandidate,
+    TopologyEvaluation,
+    as_fraction,
+    fraction_text,
+    unsupported_threshold_reason,
+)
+from .coordinates import (
+    SUBSET_ORDER,
+    X_ORDER,
+    Z_ORDER,
+    AffineExpression,
+    AffineMap,
+    build_label_affine_map,
+    full_subset_affine_map,
+    pair_coordinate_map,
+    subset_expression,
+    subset_label,
+)
+from .exact_algebra import (
+    CASResult,
+    Matrix,
+    Monomial,
+    SparsePolynomial,
+    Vector,
+    columns_from_payload,
+    columns_payload,
+    compose_linear,
+    determinant,
+    deserialize_polynomial,
+    directional_derivative,
+    gradient,
+    identity,
+    inertia,
+    left_nullspace,
+    matmul,
+    matrix_shape,
+    nullspace,
+    polynomial_add,
+    polynomial_constant,
+    polynomial_exact_quotient,
+    polynomial_gcd,
+    polynomial_gradient,
+    polynomial_multiply,
+    polynomial_scale,
+    polynomial_subtract,
+    rank,
+    right_inverse,
+    serialize_polynomial,
+    square_free_part,
+    transpose,
+)
+
+__all__ = [
+    "PROFILE_VERSION", "EVIDENCE_SCHEMA_VERSION", "COORDINATE_VERSION",
+    "REGULAR_DOMAIN_CONDITIONS", "EvaluationRequest", "InvariantOccurrence",
+    "LabelEvaluation", "PhysicsProfile", "RegularDomainContract",
+    "ReviewedCandidate", "TopologyEvaluation", "as_fraction", "fraction_text",
+    "unsupported_threshold_reason", "SUBSET_ORDER", "X_ORDER", "Z_ORDER",
+    "AffineExpression", "AffineMap", "build_label_affine_map",
+    "full_subset_affine_map", "pair_coordinate_map", "subset_expression",
+    "subset_label", "CASResult", "Matrix", "Monomial", "SparsePolynomial",
+    "Vector", "columns_from_payload", "columns_payload", "compose_linear",
+    "determinant", "deserialize_polynomial", "directional_derivative", "gradient",
+    "identity", "inertia", "left_nullspace", "matmul", "matrix_shape", "nullspace",
+    "polynomial_add", "polynomial_constant", "polynomial_exact_quotient",
+    "polynomial_gcd", "polynomial_gradient", "polynomial_multiply", "polynomial_scale",
+    "polynomial_subtract", "rank", "right_inverse", "serialize_polynomial",
+    "square_free_part", "transpose",
+]
